@@ -115,6 +115,7 @@ class Runbot(models.AbstractModel):
                 top_parent._ask_kill(message='Build automatically killed, new build found.')
 
     def _allocate_builds(self, host, nb_slots, domain=None):
+
         if nb_slots <= 0:
             return []
         non_allocated_domain = [('local_state', '=', 'pending'), ('host', '=', False)]
@@ -162,6 +163,7 @@ class Runbot(models.AbstractModel):
         nginx = icp.get_param('runbot.runbot_nginx', True)  # or just force nginx?
 
         if nginx:
+            _logger.debug('reload nginx')
             settings['builds'] = env['runbot.build'].search([('local_state', '=', 'running'), ('host', '=', fqdn())])
 
             nginx_config = env['ir.ui.view'].render_template("runbot.nginx_config", settings)

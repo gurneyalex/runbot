@@ -33,7 +33,7 @@ class Version(models.Model):
                 version.is_major = False
             else:
                 # max version number with this format: 99.99
-                version.number = '.'.join([elem.zfill(2) for elem in re.sub(r'[^0-9\.]', '', version.name).split('.')])
+                version.number = '.'.join([elem.zfill(2) for elem in re.sub(r'[^0-9\.]', '', version.name or '').split('.')])
                 version.is_major = all(elem == '00' for elem in version.number.split('.')[1:])
 
     def create(self, values):
@@ -75,7 +75,7 @@ class Version(models.Model):
                 (
                     v
                     for v in all_versions
-                    if (v.is_major or v.name == 'master') and v.number > version.number and v.sequence >= version.sequence
+                    if (v.is_major or v.name == 'master' or v.name == 'main') and v.number > version.number and v.sequence >= version.sequence
                 ), self.browse())
             if version.next_major_version_id:
                 version.next_intermediate_version_ids = all_versions.filtered(

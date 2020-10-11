@@ -241,6 +241,7 @@ class ConfigStep(models.Model):
         self._run_step(build, log_path)
 
     def _run_step(self, build, log_path, **kwargs):
+        _logger.debug('build step run %s for build %s (%s %s)', self.job_type, build, log_path, kwargs)
         build.log_counter = self.env['ir.config_parameter'].sudo().get_param('runbot.runbot_maxlogs', 100)
         run_method = getattr(self, '_run_%s' % self.job_type)
         docker_params = run_method(build, log_path, **kwargs)
@@ -755,11 +756,11 @@ class ConfigStep(models.Model):
             target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('version_id', 'in', self.upgrade_to_version_ids.ids)])
         else:
             if self.upgrade_to_master:
-                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', '=', 'master')])
+                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', 'in', ('main','master'))])
             if self.upgrade_to_all_versions:
-                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', '!=', 'master')])
+                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', 'not in', ('main', 'master'))])
             elif self.upgrade_to_major_versions:
-                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', '!=', 'master'), ('version_id.is_major', '=', True)])
+                target_refs_bundles |= self.env['runbot.bundle'].search(sticky_domain + [('name', 'not in', ('main', 'master')), ('version_id.is_major', '=', True)])
 
         source_refs_bundles = self.env['runbot.bundle']
 

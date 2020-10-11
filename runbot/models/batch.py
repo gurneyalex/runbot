@@ -96,6 +96,8 @@ class Batch(models.Model):
             elif batch.state == 'ready' and all(slot.build_id.global_state in (False, 'running', 'done') for slot in batch.slot_ids):
                 batch._log('Batch done')
                 batch.state = 'done'
+            else:
+                _logger.debug('batch processing %s %s: nothing to do', batch, batch.state)
 
     def _create_build(self, params):
         """
@@ -123,6 +125,7 @@ class Batch(models.Model):
         return link_type, build
 
     def _prepare(self, auto_rebase=False):
+        _logger.debug('batch _prepare: %s %s %s', self, self.bundle_id, self.bundle_id.name)
         for level, message in self.bundle_id.consistency_warning():
             if level == "warning":
                 self.warning("Bundle warning: %s" % message)
@@ -151,14 +154,19 @@ class Batch(models.Model):
         dependency_repos = triggers.mapped('dependency_ids')
         all_repos = triggers.mapped('repo_ids') | dependency_repos
         missing_repos = all_repos - pushed_repo
-
+        _logger.debug('pushed repo: %r', pushed_repo)
+        _logger.debug('dependency repo: %r', dependency_repos)
+        _logger.debug('all repo: %r', all_repos)
+        _logger.debug('missing repo: %r', missing_repos)
         ######################################
         # Find missing commits
         ######################################
         def fill_missing(branch_commits, match_type):
+            _logger.debug('fill missing: commits: %r  match type %r', branch_commits, match_type)
             if branch_commits:
                 for branch, commit in branch_commits.items():  # branch first in case pr is closed.
                     nonlocal missing_repos
+                    _logger.debug('check commit %r from repo %r in agains repos %r', commit, commit.repo_id, missing_repos)
                     if commit.repo_id in missing_repos:
                         if not branch.alive:
                             self._log("Skipping dead branch %s" % branch.name)
@@ -172,6 +180,7 @@ class Batch(models.Model):
                             values['base_commit_id'] = commit.id
                             values['merge_base_commit_id'] = commit.id
                         self.write({'commit_link_ids': [(0, 0, values)]})
+                        _logger.debug('fill missing found repo %r', commit.repo_id)
                         missing_repos -= commit.repo_id
 
         # CHECK branch heads consistency
@@ -188,6 +197,7 @@ class Batch(models.Model):
 
         # 1.1 FIND missing commit in bundle heads
         if missing_repos:
+            _logger.debug('FIND 1.1')
             fill_missing({branch: branch.head for branch in bundle.branch_ids.sorted(lambda b: (b.head.id, b.is_pr), reverse=True)}, 'head')
 
         # 1.2 FIND merge_base info for those commits
@@ -199,6 +209,7 @@ class Batch(models.Model):
 
         # 2. FIND missing commit in a compatible base bundle
         if missing_repos and not bundle.is_base:
+            _logger.debug('FIND 2.')
             merge_base_commits = self.commit_link_ids.mapped('merge_base_commit_id')
             if auto_rebase:
                 batch = last_base_batch
@@ -229,12 +240,14 @@ class Batch(models.Model):
 
         # 3.1 FIND missing commit in base heads
         if missing_repos:
+            _logger.debug('FIND 3.1')
             if not bundle.is_base:
                 self._log('Not all commit found in bundle branches and base batch. Fallback on base branches heads.')
             fill_missing({branch: branch.head for branch in self.bundle_id.base_id.branch_ids}, 'base_head')
 
         # 3.2 FIND missing commit in master base heads
         if missing_repos:  # this is to get an upgrade branch.
+            _logger.debug('FIND 3.2')
             if not bundle.is_base:
                 self._log('Not all commit found in current version. Fallback on master branches heads.')
             master_bundle = self.env['runbot.version']._get('master').with_context(project_id=self.bundle_id.project_id.id).base_bundle_id
@@ -242,6 +255,7 @@ class Batch(models.Model):
 
         # 4. FIND missing commit in foreign project
         if missing_repos:
+            _logger.debug('FIND 4.')
             foreign_projects = dependency_repos.mapped('project_id') - project
             if foreign_projects:
                 self._log('Not all commit found. Fallback on foreign base branches heads.')
@@ -253,6 +267,7 @@ class Batch(models.Model):
 
         # CHECK missing commit
         if missing_repos:
+            _logger.debug('FIND failed')
             _logger.warning('Missing repo %s for batch %s', missing_repos.mapped('name'), self.id)
 
         ######################################
@@ -263,6 +278,9 @@ class Batch(models.Model):
                 commit_link.commit_id = commit_link.commit_id._rebase_on(commit_link.base_commit_id)
         commit_link_by_repos = {commit_link.commit_id.repo_id.id: commit_link for commit_link in self.commit_link_ids}
         bundle_repos = bundle.branch_ids.mapped('remote_id.repo_id')
+        if not self.bundle_id.version_id:
+            _logger.warning('force recompute base_id for bundle %s', self)
+            self.bundle_id._compute_base_id()
         version_id = self.bundle_id.version_id.id
         project_id = self.bundle_id.project_id.id
         config_by_trigger = {}
