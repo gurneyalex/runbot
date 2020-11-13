@@ -600,6 +600,7 @@ class BuildResult(models.Model):
 
     def _process_requested_actions(self):
         for build in self:
+            _logger.debug('build %s requested action: %s', build, build.requested_action)
             if build.requested_action == 'deathrow':
                 result = None
                 if build.local_state != 'running' and build.global_result not in ('warn', 'ko'):

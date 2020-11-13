@@ -533,6 +533,7 @@ class Repo(models.Model):
                     self.env['runbot.runbot'].warning('Host %s got reserved because of fetch failure' % host.name)
                     _logger.exception(message)
                     host.disable()
+        _logger.debug('update fetch cmd -> %s', success)
         return success
 
     def _update(self, force=False, poll_delay=5*60):

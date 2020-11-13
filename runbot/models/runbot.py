@@ -162,6 +162,7 @@ class Runbot(models.AbstractModel):
         nginx = icp.get_param('runbot.runbot_nginx', True)  # or just force nginx?
 
         if nginx:
+            _logger.debug('reload nginx')
             settings['builds'] = env['runbot.build'].search([('local_state', '=', 'running'), ('host', '=', fqdn())])
 
             nginx_config = env['ir.ui.view'].render_template("runbot.nginx_config", settings)
