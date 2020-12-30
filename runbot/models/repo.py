@@ -94,7 +94,7 @@ class Remote(models.Model):
     _inherit = 'mail.thread'
 
     name = fields.Char('Url', required=True, tracking=True)
-    repo_id = fields.Many2one('runbot.repo', required=True, tracking=True)
+    repo_id = fields.Many2one('runbot.repo', required=True, tracking=True, ondelete="cascade")
 
     owner = fields.Char(compute='_compute_base_infos', string='Repo Owner', store=True, readonly=True, tracking=True)
     repo_name = fields.Char(compute='_compute_base_infos', string='Repo Name', store=True, readonly=True, tracking=True)
