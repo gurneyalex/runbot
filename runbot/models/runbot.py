@@ -233,11 +233,11 @@ class Runbot(models.AbstractModel):
                     repo._update_batches(bool(preparing_batch))
                     self._commit()
             if processing_batch:
-                _logger.info('starting processing of %s batches', len(processing_batch))
+                _logger.debug('starting processing of %s batches', len(processing_batch))
                 for batch in processing_batch:
                     batch._process()
                     self._commit()
-                _logger.info('end processing')
+                _logger.debug('end processing')
             self._commit()
             if runbot_do_schedule:
                 sleep_time = self._scheduler_loop_turn(host, update_frequency)
