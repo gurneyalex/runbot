@@ -300,7 +300,7 @@ class Repo(models.Model):
         if self.identity_file:
             config_args = ['-c', 'core.sshCommand=ssh -i %s/.ssh/%s' % (str(Path.home()), self.identity_file)]
         cmd = ['git', '-C', self.path] + config_args + cmd
-        _logger.info("git command: %s", ' '.join(cmd))
+        _logger.debug("git command: %s", ' '.join(cmd))
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode(errors=errors)
 
     def _fetch(self, sha):
@@ -534,6 +534,7 @@ class Repo(models.Model):
                     self.env['runbot.runbot'].warning('Host %s got reserved because of fetch failure' % host.name)
                     _logger.exception(message)
                     host.disable()
+        _logger.debug('update fetch cmd -> %s', success)
         return success
 
     def _update(self, force=False, poll_delay=5*60):

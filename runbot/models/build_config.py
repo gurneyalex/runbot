@@ -241,6 +241,7 @@ class ConfigStep(models.Model):
         self._run_step(build, log_path)
 
     def _run_step(self, build, log_path, **kwargs):
+        _logger.debug('build step run %s for build %s (%s %s)', self.job_type, build, log_path, kwargs)
         build.log_counter = self.env['ir.config_parameter'].sudo().get_param('runbot.runbot_maxlogs', 100)
         run_method = getattr(self, '_run_%s' % self.job_type)
         docker_params = run_method(build, log_path, **kwargs)
